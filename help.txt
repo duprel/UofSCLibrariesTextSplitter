@@ -1,0 +1,45 @@
+The TclPdfCoverPageRemover program is a tool written in Python to facilitate the removal of cover pages from PDF documents. Removal of cover pages from documents conforming to the University of South Carolina Scholar Commons de facto document formatting standards is made easy by the automatic detection of the cover pages to be removed. A PDF document viewer is built into the program makes it simple for the user to determine the number of cover pages for those documents which don't conform to the de facto standards. The user can then manually specify how many cover pages a document has.
+
+The Settings Dialog Box
+
+When the TclPdfCoverPageRemover program is launched it opens on tabbed views of the contents of the input and output directories, one tab for each. The first thing a user needs to do to make the program useful is to set the input and output directories in the program's settings. The Settings dialog is available via the "Edit->Settings" menu choice. With the input and output directories specified, the opening tabbed views show the PDF files in the two directories. The settings are stored in the registry on Windows machines, and in the filesystem on Mac and Linux boxes.
+
+Control of the behavior of this program consists of modifying TclPdfCoverPageRemover settings to suit the user's preferences. The settings are:
+    1. An input directory: this directory is scanned for PDF files which need cover pages removed.
+    2. An output directory: this directory is where the resulting PDF file with no cover pages is written.
+    3. A backup policy: this setting controls what happens to the input PDF if the input directory is the same as the output directory. With a policy of "Overwrite" the original PDF is replaced by the modified version. With a policy of "Backup" the original PDF is copied before replacement to a new file with the specified "Backup Extension" appended -- this extension defaults to ".bak".
+    4. A retention policy: this setting controls whether the original PDF file is left in the input directory when the input and output directories are distinct. With a policy of "Retain" the original file is left in the input directory. With a policy of "Delete" it is removed after the new copy is placed in the output directory.
+
+The Input Directory View
+
+The input directory view is where the bulk of the work is done. When the program is first opened it opens to the input directory view which consists of four regions: a listing of all the PDF files in the input directory, a messages list showing the program's output for different operations, a progress bar and a group of buttons. The three buttons in the button group are:
+    * Check Files for Cover Pages
+    * Remove Cover Pages
+    * Reload
+Each button initiates a different action over the input directory. Two of the actions, "Check Files for Cover Pages" and "Remove Cover Pages", occur asynchronously as background processes in the program. Once an asynchronous process is initiated, the "Check Files For Cover Pages" button and the "Remove Cover Pages" button are disabled until the asynchronous action is complete. 
+
+Clicking the "Check Files for Cover Pages" button initiates the checking for cover pages. As each file in the input directory is checked its result is printed to the messages list, its icon in the directory listing is changed, and the progress bar is advanced. 
+
+Clicking the "Remove Cover Pages" button triggers the removal of cover pages for all files in the input directory for which the number of cover pages is known. As input files are processed progress is shown as with "Check Files for Cover Pages". In addition, the new copy of the PDF file without cover pages is written to the output directory.
+
+By Clicking the "Reload" button, the input directory is reread as if the program was just started. The state of all files is returned to the Unchecked state. This program does not dynamically detect changes to the contents of the input directory. So the user will need to click the Reload button to detect files added to the input directory after program opening. Removing files from the input directory after the program has detected them will cause the program problems.
+
+PDF Context Menus
+
+In both the input directory and output directory views a right-click on a filename opens a context menu with the "View" option; clicking this option opens the PDF file in a document viewer. In the input directory's view, the context menu also has other options depending on the state of the input file. The different states of an input PDF file are:
+    * Unchecked: this is the initial state of all files in the input directory. Documents in this state appear in the view's listing area with an Adobe PDF icon.
+    * Checked and Known: files that conform to the formatting standard enter this state after the program has checked them for cover pages. Documents in this state appear in the listing as a blue piece of paper with the number of cover pages superimposed.
+    * Checked and Unknown: files in this state don't conform to the formatting standard. Documents in this state appear in the listing as a red circle with a white border with an exclamation point inside.
+    * Manually Set: files enter this state after the user views the document and then sets the number of cover pages via the dialog launched from the "Set Number Cover Pages" context menu option.
+
+In the input directory view the contents of the listing's context menu change depending on the state of the highlighted input. "View" is always present. After the files have been checked for cover pages items have the "Set Number Cover Pages" and "Clear Number Cover Pages" visible. Specifying the number of cover pages manually moves the item to the Manually Set state. Clearing the number of cover pages moves an item to the Unchecked state. 
+
+The Output Directory View
+
+The output directory view show the PDF files in the output directory. Unlike the input directory's view, the contents of this view are refreshed every time the user clicks its tab. The only option available in the context menu for contents is the View option which allows the user to verify that the cover page removal operation occurred.
+
+Exiting the Program
+
+To exit the program the user should select "App->Exit" from the main menu or click the close icon on the window. Exiting this way results in the settings being saved to reflect their current state. The settings includes window sizes and locations, so if you change these your preferences will be remembered the next time you start the program.
+
+
