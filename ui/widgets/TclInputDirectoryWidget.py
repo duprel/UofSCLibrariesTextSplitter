@@ -1,39 +1,30 @@
-import os, sys, time
 from pathlib import Path
-from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QWidget, QListWidget,
-    QDialogButtonBox, QGroupBox, QRadioButton, QListWidgetItem, QListView,
-    QProgressBar, QLineEdit, QPushButton, QTextEdit, QMenu, QSpinBox,
-    QComboBox, QFileDialog, QHBoxLayout, QVBoxLayout, QMainWindow, QStatusBar)
-from PySide6.QtCore import (QCoreApplication, Qt, Signal, QSettings, QStandardPaths,
-                            QSize, QPoint)
+from PySide6.QtWidgets import (QDialog, QLabel, QWidget, QDialogButtonBox, QListView,
+                               QProgressBar, QPushButton, QTextEdit, QMenu, QSpinBox, 
+                               QHBoxLayout, QVBoxLayout)
+from PySide6.QtCore import (Qt, Signal, QPoint)
 from PySide6.QtGui import QAction, QIcon
-from .TclPdfSettingsDialog import PdfSettingsDialog
-from utils.TclPdfInputDirectory import (TclPdfInputStatus, TclPdfInputDirectory, 
-                                              CheckNumCoverPages, RmLeadingPages)
-from .TclPdfViewDialog import TclPdfViewDialog
-
-ui_dir = Path(__file__).resolve().parents[1]
-
-document_icon_path  = str(ui_dir/"resources"/"icons"/"document-pdf.png")
-pencil_icon_path    = str(ui_dir/"resources"/"icons"/"pencil.png")
-eraser_icon_path    = str(ui_dir/"resources"/"icons"/"eraser.png")
-lightning_icon_path = str(ui_dir/"resources"/"icons"/"lightning.png")
+from .TclDirSettingsDialog import TclDirSettingsDialog
+from utils.TclInputDirectory import (TclInputStatus, TclInputDirectory, 
+                                     TclCheckStatusOfInputFiles, TclProcessInputFiles)
 
 
-class NumPagesDialog(QDialog):
-  numCoverPagesSelected = Signal(int)
+class TclIntegerInputDialog(QDialog):
+  valueSelected = Signal(int)
+  DIALOG_TITLE = ""
+  INPUT_LABEL = ""
 
   def __init__(self, parent=None):
-    self.num_cover_pages = None
+    self.integerValue = None
     super().__init__(parent)
     self.setModal(True)
     self.initializeUI()
 
   def initializeUI(self):
-    self.setWindowTitle("Set Number of Cover Pages")
+    self.setWindowTitle(self.DIALOG_TITLE)
     v_layout = QVBoxLayout()
     h_layout = QHBoxLayout()
-    label = QLabel("Num Cover Pages: ")
+    label = QLabel(self.INPUT_LABEL)
     h_layout.addWidget(label)
     spinbox = QSpinBox()
 
@@ -53,10 +44,10 @@ class NumPagesDialog(QDialog):
     self.setLayout(v_layout)
 
   def value_changed(self, value):
-    self.num_cover_pages = value
+    self.integerValue = value
 
   def accept(self): 
-    self.numCoverPagesSelected.emit(self.num_cover_pages)
+    self.valueSelected.emit(self.integerValue)
     self.done(QDialog.DialogCode.Accepted)
     super().accept()
 
@@ -65,7 +56,27 @@ class NumPagesDialog(QDialog):
     super().reject()
 
 
-class TclPdfInputDirectoryWidget(QWidget):
+class TclInputDirectoryWidget(QWidget):
+  INPUT_CLASS = None
+  VIEW_DIALOG_CLASS = None
+  SET_INPUT_STATUS_DIALOG_CLASS = None
+
+  CHECK_INPUTS_LABEL = ""
+  PROCESS_INPUTS_LABEL = ""
+  RELOAD_INPUTS_LABEL = "Reload"
+  PROCESS_INPUT_LABEL = ""
+  CLEAR_INPUT_LABEL = ""
+  SET_INPUT_LABEL = ""
+  VIEW_INPUT_LABEL = "View"
+
+  VIEW_ICON = "document-pdf.png"
+  SET_ICON = "pencil.png"
+  CLEAR_ICON = "eraser.png"
+  PROCESS_ICON = "lightning.png"
+
+  @classmethod
+  def iconDirectory(cls):
+    return "ui/resources/icons"
 
   def __init__(self, settings):
     super().__init__()
@@ -86,14 +97,14 @@ class TclPdfInputDirectoryWidget(QWidget):
     if self.settings.value("in_directory", None):
       input_dir_text = str(self.settings.value("in_directory"))
     else:
-      input_dir_text = "<<Go to settings to set the PDF input directory>>"
+      input_dir_text = "<<Go to settings to set the input directory>>"
 
     self.input_label = QLabel(f"Input Directory: {input_dir_text}")
 
     self.list_view = QListView()
-    self.list_model = TclPdfInputDirectory(self.settings)
+    self.list_model = self.LIST_MODEL_CLASS(self.settings, self.INPUT_CLASS)
     self.list_view.setModel(self.list_model)
-    self.list_view.setContextMenuPolicy(Qt.CustomContextMenu)
+    self.list_view.setContextMenuPolicy(Qt.CustomContextMenu) 
     self.list_view.customContextMenuRequested.connect(self.showContextMenu)
 
     message_label = QLabel(f"Messages:")
@@ -106,23 +117,24 @@ class TclPdfInputDirectoryWidget(QWidget):
 
     vbox = QVBoxLayout()
     vbox.addWidget(self.input_label)
-#    vbox.addWidget(self.list_widget)
     vbox.addWidget(self.list_view)
     vbox.addWidget(message_label)
     vbox.addWidget(self.text_edit)
     vbox.addWidget(self.progress_bar)
 
-    self.check_cover_pages_button = QPushButton('Check Files for Cover Pages')
-    self.check_cover_pages_button.clicked.connect(self.checkFilesForCoverPages)
-    self.rem_cover_pages_button = QPushButton('Remove Cover Pages')
-    self.rem_cover_pages_button.clicked.connect(self.removeCoverPages)
-    self.reload_pdfs_button = QPushButton('Reload')
-    self.reload_pdfs_button.clicked.connect(self.reloadPdfs)
+    self.check_input_status_button = QPushButton(self.CHECK_INPUTS_LABEL)
+    self.check_input_status_button.clicked.connect(self.checkStatusOfInputFiles)
+    
+    self.process_input_files_button = QPushButton(self.PROCESS_INPUTS_LABEL)
+    self.process_input_files_button.clicked.connect(self.processInputFiles)
+    
+    self.reload_input_files_button = QPushButton(self.RELOAD_INPUTS_LABEL)
+    self.reload_input_files_button.clicked.connect(self.reloadInputFiles)
 
     hbox = QHBoxLayout()
-    hbox.addWidget(self.check_cover_pages_button)
-    hbox.addWidget(self.rem_cover_pages_button)
-    hbox.addWidget(self.reload_pdfs_button)
+    hbox.addWidget(self.check_input_status_button)
+    hbox.addWidget(self.process_input_files_button)
+    hbox.addWidget(self.reload_input_files_button)
     vbox.addLayout(hbox)
 
     self.setLayout(vbox)
@@ -139,35 +151,36 @@ class TclPdfInputDirectoryWidget(QWidget):
 
   def checkButtonEnabling(self):
     row_count = self.list_model.rowCount()
-    check_cover_pages_enabled = False
-    rem_cover_pages_enabled = False
+    check_input_status_enabled = False
+    process_input_files_enabled = False
 
     if not self.async_operations:
+
       for row in range(row_count):
         index = self.list_model.index(row,0)
         item = self.list_model.data(index, Qt.UserRole + 1)
 
         match item.status:
-          case TclPdfInputStatus.UNCHECKED:
-            check_cover_pages_enabled = True
-          case TclPdfInputStatus.CHECKED_KNOWN | TclPdfInputStatus.MANUALLY_SET:
-            rem_cover_pages_enabled = True
+          case TclInputStatus.UNCHECKED:
+            check_input_status_enabled = True
+          case TclInputStatus.CHECKED_KNOWN | TclInputStatus.MANUALLY_SET:
+            process_input_files_enabled = True
 
-        if check_cover_pages_enabled and rem_cover_pages_enabled:
+        if check_input_status_enabled and process_input_files_enabled:
           break
 
-    self.check_cover_pages_button.setEnabled(check_cover_pages_enabled)
-    self.rem_cover_pages_button.setEnabled(rem_cover_pages_enabled)
+    self.check_input_status_button.setEnabled(check_input_status_enabled)
+    self.process_input_files_button.setEnabled(process_input_files_enabled)
         
-  def checkFilesForCoverPages(self):
+  def checkStatusOfInputFiles(self):
     if not self.async_operations:
       #print("checkFilesForCoverPages")
       self.setAsyncOperations()
       self.progress_bar.setValue(0)
-      self.checkNumCoverPages = CheckNumCoverPages(self.list_model)
-      self.checkNumCoverPages.progress.connect(self.showProgress)
-      self.checkNumCoverPages.finished.connect(self.setNumPagesFor)
-      self.checkNumCoverPages.processFiles()
+      self.checkStatusOfInputFiles = TclCheckStatusOfInputFiles(self.list_model)
+      self.checkStatusOfInputFiles.progress.connect(self.showProgress)
+      self.checkStatusOfInputFiles.finished.connect(self.setStatusFor)
+      self.checkStatusOfInputFiles.processFiles()
     #else:
     #  print("BLOCKED ==========================")
 
@@ -177,59 +190,59 @@ class TclPdfInputDirectoryWidget(QWidget):
       self.unsetAsyncOperations()
       self.progress_bar.setValue(0)
 
-  def setNumPagesFor(self, result):
+  def setStatusFor(self, result):
     message = f"Checked '{str(result["file_path"])}'\n"
     message += f"Result: {result['result']} pages\n"
     message += "=========="
     self.text_edit.append(message)
     row_specifier = result["identifier"]
-    num_pages = result["result"]
+    status_content = result["result"]
     item = self.list_model.data(row_specifier, Qt.UserRole + 1)
-    if num_pages == '1' or num_pages == '2':
-      item.status = TclPdfInputStatus.CHECKED_KNOWN
+    item.setStatusContent(status_content)
+    if item.statusContentIsKnown():
+      item.status = TclInputStatus.CHECKED_KNOWN
     else:
-      item.status = TclPdfInputStatus.CHECKED_UNKNOWN
-    item.num_cover_pages = num_pages
+      item.status = TclInputStatus.CHECKED_UNKNOWN
     self.list_model.dataChanged.emit(row_specifier, row_specifier, [])
     self.checkButtonEnabling()
 
-  def clearNumPagesFor(self, result):
+  def clearStatusContentFor(self, result):
     row_specifier = result["identifier"]
     item = self.list_model.data(row_specifier, Qt.UserRole + 1)
-    item.status = TclPdfInputStatus.UNCHECKED
-    item.num_cover_pages = None
+    item.clearStatusContent()
+    item.status = TclInputStatus.UNCHECKED
     self.list_model.dataChanged.emit(row_specifier, row_specifier, [])
     self.checkButtonEnabling()
     
   def setProcessedFor(self, result):
     row_specifier = result["identifier"]
     item = self.list_model.data(row_specifier, Qt.UserRole + 1)
-    item.status = TclPdfInputStatus.PROCESSED
-    item.num_cover_pages = None
+    item.clearStatusContent()
+    item.status = TclInputStatus.PROCESSED
     self.list_model.dataChanged.emit(row_specifier, row_specifier, [])
     self.checkButtonEnabling()
     
   def showFinishedFor(self, result):
     self.text_edit.append(result["result"])
     if self.settings.value("retention_policy") == "Retain":
-      self.clearNumPagesFor(result)
+      self.clearStatusContentFor(result)
     else:
       self.setProcessedFor(result)
     self.checkButtonEnabling()
 
-  def removeCoverPages(self):
+  def processInputFiles(self):
     if not self.async_operations:
       #print("removeCoverPages")
       self.setAsyncOperations()
       self.progress_bar.setValue(0)
-      self.removeCoverPages = RmLeadingPages(self.list_model, self.settings)
-      self.removeCoverPages.progress.connect(self.showProgress)
-      self.removeCoverPages.finished.connect(self.showFinishedFor)
-      self.removeCoverPages.processFiles()
+      self.processInputs = TclProcessInputFiles(self.list_model, self.settings)
+      self.processInputs.progress.connect(self.showProgress)
+      self.processInputs.finished.connect(self.showFinishedFor)
+      self.processInputs.processFiles()
     #else:
     #  print("BLOCKED ==========================")
 
-  def reloadPdfs(self):
+  def reloadInputFiles(self):
     input_dir_text = str(self.settings.value("in_directory"))
     self.input_label.setText(f"Input Directory: {input_dir_text}")
     self.list_model.reload()
@@ -244,24 +257,42 @@ class TclPdfInputDirectoryWidget(QWidget):
       item = self.list_model.data(index, Qt.UserRole + 1)
       #menu = item.contextMenu(self)
       menu.addAction(self.view_act)
-      menu.addAction(self.set_num_pages_act)
-      if item.num_cover_pages is not None:
-        menu.addAction(self.clear_num_pages_act)
+      menu.addAction(self.set_input_status_act)
+      if item.getStatusContent() is not None:
+        menu.addAction(self.clear_input_status_act)
       menu.exec(self.list_view.viewport().mapToGlobal(pos))
 
+  def iconNameForAction(self, act):
+    icon_name = ''
+    match act:
+      case "DOCUMENT":
+        icon_name = self.INPUT_CLASS.DOCUMENT_ICON
+      case "SET":
+        icon_name = self.INPUT_CLASS.EDIT_ICON
+      case "CLEAR":
+        icon_name = self.INPUT_CLASS.CLEAR_ICON
+      case "PROCESS":
+        icon_name = self.INPUT_CLASS.PROCESS_ICON
+
+    return icon_name
+        
+  def iconForAction(self, act):
+    return QIcon(self.iconDirectory() + "/" + self.iconNameForAction(act))
+
+  
   def createActions(self):
-    self.view_act = QAction(QIcon(document_icon_path), "View")
+    self.view_act = QAction(self.iconForAction("DOCUMENT"), self.VIEW_INPUT_LABEL)
     self.view_act.triggered.connect(self.viewSelection)
     self.list_view.doubleClicked.connect(self.itemDoubleClicked)
 
-    self.set_num_pages_act = QAction(QIcon(pencil_icon_path), "Set Number Cover Pages")
-    self.set_num_pages_act.triggered.connect(self.setNbrPagesSelection)
+    self.set_input_status_act = QAction(self.iconForAction("SET"), self.SET_INPUT_LABEL)
+    self.set_input_status_act.triggered.connect(self.invokeSetInputStatus)
 
-    self.clear_num_pages_act = QAction(QIcon(eraser_icon_path), "Clear Number Cover Pages")
-    self.clear_num_pages_act.triggered.connect(self.clearSelection)
+    self.clear_input_status_act = QAction(self.iconForAction("CLEAR"), self.CLEAR_INPUT_LABEL)
+    self.clear_input_status_act.triggered.connect(self.clearInputStatus)
 
-    self.remove_cover_pages_act = QAction(QIcon(lightning_icon_path), "Remove Cover Pages")
-    self.remove_cover_pages_act.triggered.connect(self.removeCoverPagesSelection)
+    self.process_act = QAction(self.iconForAction("PROCESS"), self.PROCESS_INPUT_LABEL)
+    self.process_act.triggered.connect(self.processInput)
 
   def itemDoubleClicked( self, index):
     self.current_index = index
@@ -269,49 +300,50 @@ class TclPdfInputDirectoryWidget(QWidget):
 
   def viewSelection(self):
     item = self.list_model.data(self.current_index, Qt.UserRole + 1)
-    self.dialog = TclPdfViewDialog(self, self.settings, str(item.filename))
+    self.dialog = self.VIEW_DIALOG_CLASS(self, self.settings, str(item.filename))
     self.dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     self.dialog.exec()
 
-  def setNbrPagesSelection(self, num_pages):
-    print("setNbrPagesSelection")
-    self.dialog = NumPagesDialog(self)
+  def invokeSetInputStatus(self, val):
+    print("invokeSetInputStatus")
+    self.dialog = self.SET_INPUT_STATUS_DIALOG_CLASS(self)
     #self.dialog.setModal(True)
     self.dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     self.dialog.setFixedSize(300,150)
-    self.dialog.numCoverPagesSelected.connect(self.setNumCoverPages)
+    self.dialog.valueSelected.connect(self.setInputStatus)
     self.dialog.exec()
 
-  def setNumCoverPages(self, num_pages):
+  def setInputStatus(self, val):
     if self.current_index:
       item = self.list_model.data(self.current_index, Qt.UserRole + 1)
-      item.num_cover_pages = num_pages
-      item.status = TclPdfInputStatus.MANUALLY_SET
+      item.setStatusContent(val)
+      item.status = TclInputStatus.MANUALLY_SET
       self.list_model.dataChanged.emit(self.current_index, 
                                        self.current_index,
                                        [Qt.DecorationRole])
       self.checkButtonEnabling()
 
       
-  def clearSelection(self):
+  def clearInputStatus(self):
     if self.current_index:
       item = self.list_model.data(self.current_index, Qt.UserRole + 1)
-      item.num_cover_pages = None
-      item.status = TclPdfInputStatus.UNCHECKED
+      item.clearStatusContent()
+      item.status = TclInputStatus.UNCHECKED
       self.list_model.dataChanged.emit(self.current_index, 
                                        self.current_index,
                                        [Qt.DecorationRole])
       self.checkButtonEnabling()
     
-  def removeCoverPagesSelection(self):
-    print("removeCoverPagesSelection")
+  def processInput(self):
+    print("processInput")
   
   def editSettingsDialog(self):
-    dialog = PdfSettingsDialog(self, self.settings)
-    dialog.pdfSettingsAccepted.connect(self.setSettings)
+    dialog = TclDirSettingsDialog(self, self.settings)
+    dialog.dirSettingsAccepted.connect(self.setSettings)
     dialog.exec()
 
 
 __all__ = [
-  'TclPdfInputDirectoryWidget'
+  'TclInputDirectoryWidget',
+  'TclIntegerInputDialog',
   ]

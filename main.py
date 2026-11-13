@@ -7,10 +7,8 @@ from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QWidget, QListWidg
 from PySide6.QtCore import (QCoreApplication, Qt, Signal, QSettings, QStandardPaths,
                             QSize, QPoint)
 from PySide6.QtGui import QAction, QIcon
-from ui.widgets.TclPdfSettingsDialog import PdfSettings, PdfSettingsDialog
-from ui.widgets.TclPdfViewDialog import TclPdfViewDialog
-from ui.widgets.TclPdfInputDirectoryWidget import TclPdfInputDirectoryWidget
-from ui.widgets.TclPdfOutputDirectoryWidget import TclPdfOutputDirectoryWidget
+from ui.widgets.TclDirSettingsDialog import TclDirSettings, TclDirSettingsDialog
+from TclPdfCustom import TclPdfOutputDirectoryWidget, TclPdfInputDirectoryWidget
 
 def get_asset_path(relative_path):
   try:
@@ -120,8 +118,8 @@ class MainWindow(QMainWindow):
     app_menu.addAction(self.quit_act)
 
   def editSettingsDialog(self):
-    dialog = PdfSettingsDialog(self, self.settings)
-    dialog.pdfSettingsAccepted.connect(self.setSettings)
+    dialog = TclDirSettingsDialog(self, self.settings)
+    dialog.dirSettingsAccepted.connect(self.setSettings)
     dialog.exec()
 
   def setSettings(self, ev):
@@ -146,7 +144,7 @@ class MainWindow(QMainWindow):
 
   def tabChanged(self, index):
     if index == 1:
-      self.tab_output_dir.reloadPdfs()
+      self.tab_output_dir.reload()
 
 
   #def moveEvent(self, e):

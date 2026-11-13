@@ -5,11 +5,11 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QComboBox,
                                QVBoxLayout, QGroupBox)
 from  PySide6.QtCore import (Qt, Signal)
 
-PdfOverwritePolicy = namedtuple('PdfOverwritePolicy', ['policy', 'backup_extension'])
-defaultOverwritePolicy = PdfOverwritePolicy("Backup", ".bak")
+DirOverwritePolicy = namedtuple('DirOverwritePolicy', ['policy', 'backup_extension'])
+defaultOverwritePolicy = DirOverwritePolicy("Backup", ".bak")
 
-class TclPdfOverwritePolicy(QGroupBox):
-    overwritePolicyChanged = Signal(PdfOverwritePolicy)
+class TclDirOverwritePolicy(QGroupBox):
+    overwritePolicyChanged = Signal(DirOverwritePolicy)
 
     def __init__(self, policy=defaultOverwritePolicy):
         self.policy = policy
@@ -22,8 +22,8 @@ class TclPdfOverwritePolicy(QGroupBox):
         (
         """Your input and output directories are the same. You must specify an """
         """overwrite policy. Choose "Overwrite Originals" to replace original """
-        """Pdf file. Choose "Backup Originals" to create backup of original before """
-        """replacing with new Pdf file."""
+        """file. Choose "Backup Originals" to create backup of original before """
+        """replacing with new file."""
         )
       )    
       overwrite_descr.setWordWrap(True)
@@ -58,20 +58,20 @@ class TclPdfOverwritePolicy(QGroupBox):
 
     def policy_changed(self):
       if self.replace_original_rb.isChecked():
-        self.policy = PdfOverwritePolicy("Overwrite",
+        self.policy = DirOverwritePolicy("Overwrite",
                                          self.backup_extension.text())
         self.backup_extension.setEnabled(False)
       else:
-        self.policy = PdfOverwritePolicy("Backup",
+        self.policy = DirOverwritePolicy("Backup",
                                          self.backup_extension.text())
         self.backup_extension.setEnabled(True)
 
-      self.overwritePolicyChanged.emit(PdfOverwritePolicy(self.policy.policy,
+      self.overwritePolicyChanged.emit(DirOverwritePolicy(self.policy.policy,
                                                           self.policy.backup_extension))
        
-__all__ = ['PdfOverwritePolicy',
+__all__ = ['DirOverwritePolicy',
            'defaultOverwritePolicy', 
-           'TclPdfOverwritePolicy']
+           'TclDirOverwritePolicy']
       
 class MainWindow(QMainWindow):
   def __init__(self):
@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
     self.items = ["Enabled","Disabled"]
     super().__init__()
     layout = QVBoxLayout()
-    self.overwrite_group = TclPdfOverwritePolicy(defaultOverwritePolicy)
+    self.overwrite_group = TclDirOverwritePolicy(defaultOverwritePolicy)
     self.combo_box = QComboBox()
     self.combo_box.addItems(self.items)
     self.combo_box.currentIndexChanged.connect(self.index_changed)

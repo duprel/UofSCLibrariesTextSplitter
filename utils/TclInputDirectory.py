@@ -1,6 +1,7 @@
 import math 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import ClassVar
 from pathlib import Path
 from enum import Enum
 
@@ -9,36 +10,97 @@ from PySide6.QtCore import (Qt, QObject, Signal, QAbstractListModel, QModelIndex
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QMenu
 
-from .TclPdfBackgroundProcess import (TclPdfNumCoverPages, 
-                                     TclPdfRmLeadingPages, 
-                                     TclPdfSignals)
+from .TclBackgroundProcess import (TclCheckStatusOfInputFile, 
+                                     TclProcessInputFile, 
+                                     TclSignals)
 
+ui_dir = Path(__file__).resolve().parents[1]
 
-class TclPdfInputStatus(Enum):
+document_icon_path  = str(ui_dir/"resources"/"icons"/"document-pdf.png")
+pencil_icon_path    = str(ui_dir/"resources"/"icons"/"pencil.png")
+eraser_icon_path    = str(ui_dir/"resources"/"icons"/"eraser.png")
+lightning_icon_path = str(ui_dir/"resources"/"icons"/"lightning.png")
+
+class TclInputStatus(Enum):
   UNCHECKED = 0
   CHECKED_KNOWN = 1
   CHECKED_UNKNOWN = 2
   MANUALLY_SET = 3
   PROCESSED = 4
 
-
 @dataclass
-class TclPdfInput:
+class TclInput:
   id: int
   filename: str
-  status: TclPdfInputStatus = TclPdfInputStatus.UNCHECKED
-  num_cover_pages: int | None = None
+  status: TclInputStatus = TclInputStatus.UNCHECKED
+  contents: dict = field(default_factory=dict)
 
-  def clearNumPages(self):
-    self.num_cover_pages = None
-    self.status = TclPdfInputStatus.UNCHECKED
+  DOCUMENT_ICON:      ClassVar[str] = "document-pdf.png"
+  EDIT_ICON:          ClassVar[str] = "pencil.png"
+  CLEAR_ICON:         ClassVar[str] = "eraser.png"
+  PROCESS_ICON:       ClassVar[str] = "lightning.png"
+  UNCHECKED_ICON:     ClassVar[str] = "document-pdf.png"
+  STATUS_CONTENT_TAG: ClassVar[str] = "<<STATUSCONTENT>>"
+  KNOWN_ICON:         ClassVar[str] = "blue-document-number-<<statusContent>>.png"
+  UNKNOWN_ICON:       ClassVar[str] = "exclamation-red-frame.png"
+  SET_ICON:           ClassVar[str] = "document-number-<<statausContent>>.png"
+  PROCESSED_ICON:     ClassVar[str] = "tick.png"
 
-  def setNumCoverPages(self, num):
-    self.num_cover_pages = num
-    self.status = TclPdfInputStatus.MANUALLY_SET
+  @classmethod
+  def statusContentKey(cls):
+    pass
 
-    
-class TclPdfInputDirectory(QAbstractListModel):
+  @classmethod
+  def iconDirectory(cls):
+    return "ui/resources/icons"
+
+  def statusContentIsKnown(self):
+    pass
+
+  def statusContentCanBeProcessed(self):
+    pass
+
+  def iconNameForStatus(self, status):
+    match self.status:
+      case TclInputStatus.UNCHECKED:
+        name = UNCHECKED_ICON
+      case TclInputStatus.CHECKED_KNOWN:
+        name = KNOWN_ICON
+      case TclInputStatus.CHECKED_UNKNOWN:
+        name = UNKNOWN_ICON
+      case TclInputStatus.MANUALLY_SET:
+        name = SET_ICON
+      case TclInputStatus.PROCESSED:
+        name = PROCESSED_ICON
+
+    if name.find(self.STATUS_CONTENT_TAG) == -1:
+      icon_name = name
+    else:
+      icon_name = name.replace(self.STATUS_CONTENT_TAG, self.getStatusContent())  
+    return icon_name
+
+  def iconForStatus(self):
+    return QIcon(self.iconDirectory() + "/" + self.iconNameForStatus(self.status))
+
+  def getStatusContent(self):
+    return self.contents.get(self.statusContentKey(), None)
+
+  def setStatusContent(self, val):
+    self.contents[self.statusContentKey()] = val
+    self.status = TclInputStatus.MANUALLY_SET
+
+  def clearStatusContent(self):
+    self.contents[self.statusContentKey()] = None
+    self.status = TclInputStatus.UNCHECKED
+
+
+class TclInputDirectory(QAbstractListModel):
+  INPUT_CLASS = TclInput
+  GLOB_PATTERN = "*"
+
+  @classmethod
+  def iconDirectory(cls):
+    return "ui/resources/icons"
 
   def __init__(self, settings=None, parent=None):
     self.settings = settings
@@ -52,13 +114,13 @@ class TclPdfInputDirectory(QAbstractListModel):
       if not directory:
         return
       index = 0
-      for fname in sorted(Path(directory).glob("*.pdf", case_sensitive=False)):
+      for fname in sorted(Path(directory).glob(self.GLOB_PATTERN, case_sensitive=False)):
         fpath = Path(fname)
         if (fpath.is_file() and
             not fpath.name.startswith('.')):
-          input = TclPdfInput(id=index, filename=fpath, 
-                              status=TclPdfInputStatus.UNCHECKED, 
-                              num_cover_pages=None)
+          input = self.INPUT_CLASS(id=index, filename=fpath, 
+                                  status=TclInputStatus.UNCHECKED, 
+                                  contents={})
           self.files.append(input)
           index = index + 1
 
@@ -82,35 +144,17 @@ class TclPdfInputDirectory(QAbstractListModel):
       return None
 
     item = self.files[row]
-    #print(f"row({row}) role({role}): {item}")
     if role == Qt.DisplayRole:
       return str(item.filename.name)
     elif role == Qt.DecorationRole:
-      ui_dir = Path(__file__).resolve().parents[1]
-      match item.status:
-        case TclPdfInputStatus.UNCHECKED:
-          icon = QIcon(str(ui_dir/"ui"/"resources"/"icons"/"document-pdf.png"))
-        case TclPdfInputStatus.CHECKED_KNOWN:
-          icon = QIcon(str(ui_dir/"ui"/"resources"/"icons"/f"blue-document-number-{str(item.num_cover_pages)}.png"))
-        case TclPdfInputStatus.CHECKED_UNKNOWN:
-          icon = QIcon(str(ui_dir/"ui"/"resources"/"icons"/"exclamation-red-frame.png"))
-        case TclPdfInputStatus.MANUALLY_SET:
-          icon = QIcon(str(ui_dir/"ui"/"resources"/"icons"/f"document-number-{str(item.num_cover_pages)}.png"))
-        case TclPdfInputStatus.PROCESSED:
-          icon = QIcon(str(ui_dir/"ui"/"resources"/"icons"/"tick.png"))
-      return icon
+      return item.iconForStatus()
     elif role == Qt.UserRole + 1:
       return item
 
     return None
 
-#class RunProcessesOverDirSignals(QObject):
-#  finished = Signal(dict)
-#  progress = Signal(int)
-#  error = Signal(str)
 
-
-class RunProcessesOverDir(QObject):
+class TclRunProcessesOverDir(QObject):
   threadpool = QThreadPool()
   threadpool.setMaxThreadCount(2)
   finished = Signal(dict)
@@ -123,7 +167,7 @@ class RunProcessesOverDir(QObject):
     super().__init__()
 
 
-class CheckNumCoverPages(RunProcessesOverDir):
+class TclCheckStatusOfInputFiles(TclRunProcessesOverDir):
 
   def __init__(self, inputDirectory=None):
     self.inputDirectory = inputDirectory
@@ -135,14 +179,14 @@ class CheckNumCoverPages(RunProcessesOverDir):
     for index in range(num_all_files):
       input_index = self.inputDirectory.index(index,0)
       input_file = self.inputDirectory.data(input_index, Qt.UserRole + 1)
-      if input_file.status == TclPdfInputStatus.UNCHECKED:
+      if input_file.status == TclInputStatus.UNCHECKED:
         self.file_list.append((input_file.filename, input_index))
 
     self.original_list_size = len(self.file_list)
     self.num_complete = 0
     
     for input_filename, input_index in self.file_list:
-      worker = TclPdfNumCoverPages(input_filename, input_index)
+      worker = TclCheckStatusOfInputFile(input_filename, input_index)
       self.workers.append(worker)
       worker.signals.result.connect(self.fileResult)
       worker.signals.error.connect(self.fileError)
@@ -163,7 +207,7 @@ class CheckNumCoverPages(RunProcessesOverDir):
   def fileError(self, error):
     pass
 
-class RmLeadingPages(RunProcessesOverDir):
+class TclProcessInputFiles(TclRunProcessesOverDir):
 
   def __init__(self, inputDirectory, settings):
     self.inputDirectory = inputDirectory
@@ -177,10 +221,10 @@ class RmLeadingPages(RunProcessesOverDir):
       input_index = self.inputDirectory.index(index,0)
       input_file = self.inputDirectory.data(input_index, Qt.UserRole + 1)
 
-      if ((input_file.status == TclPdfInputStatus.CHECKED_KNOWN
-           or input_file.status == TclPdfInputStatus.MANUALLY_SET)
-          and int(input_file.num_cover_pages) > 0):
-        self.file_list.append((input_file.filename, input_index, input_file.num_cover_pages))
+      if ((input_file.status == TclInputStatus.CHECKED_KNOWN
+           or input_file.status == TclInputStatus.MANUALLY_SET)
+          and input_file.statusContentCanBeProcessed()):
+        self.file_list.append((input_file.filename, input_index, input_file.getStatusContent()))
 
     self.original_list_size = len(self.file_list)
     self.num_complete = 0
@@ -193,13 +237,14 @@ class RmLeadingPages(RunProcessesOverDir):
 
     leave_original = self.settings.value('retention_policy') == "Retain"
     
-    for input_filename, input_index, num_cover_pages in self.file_list:
+    for input_filename, input_index, status_content in self.file_list:
       bname = os.path.basename(input_filename)
       outpath = os.path.join(self.settings.value('out_directory'), bname)
-      worker = TclPdfRmLeadingPages(input_filename, outpath, 
-                                    input_index, num_cover_pages,
-                                    leave_original=leave_original,
-                                    backup_extension=backup_extension)
+      options = {'status_content': status_content}
+      worker = TclProcessInputFile(input_filename, outpath, input_index, 
+                                   leave_original=leave_original,
+                                   backup_extension=backup_extension,
+                                   options=options)
       worker.signals.result.connect(self.fileResult)
       worker.signals.error.connect(self.fileError)
       print(f"Requesting threadpool start for {bname}")
@@ -222,9 +267,9 @@ class RmLeadingPages(RunProcessesOverDir):
 
 
 __all__ = [
-  TclPdfInputStatus,
-  TclPdfInput,
-  TclPdfInputDirectory,
-  CheckNumCoverPages,
-  RmLeadingPages,
+  TclInputStatus,
+  TclInput,
+  TclInputDirectory,
+  TclCheckStatusOfInputFiles,
+  TclProcessInputFiles,
 ]    

@@ -133,7 +133,15 @@ def rm_pages(in_fpath, out_fpath, pages):
 
         logger.debug(f"rm_pages complete ===================")
 
-def rm_leading_pages(in_fpath, out_fpath, identifier, num_pages,
+
+def process_file(in_fpath, out_fpath, identifier, leave_original=False, 
+                 backup_extension=None, options={}):
+    num_pages = options['status_content']
+    return rm_leading_pages(in_fpath, out_fpath, identifier, num_pages=num_pages,
+                            leave_original=leave_original, backup_extension=backup_extension)
+
+
+def rm_leading_pages(in_fpath, out_fpath, identifier, num_pages=0,
                      leave_original=False, backup_extension=None):
     def _rm_pages(in_fpath, out_fpath, pages):
         fpath = Path(in_fpath)
@@ -572,6 +580,11 @@ def pdf_files_in_path(in_path):
     if _is_pdf_file(ipath):
         yield(ipath)
 
+
+def check_status_of_file(fpath, identifier=None, threshhold=20):
+    return num_cover_pages_in_file(fpath, identifier=identifier, threshhold=threshhold)
+
+
 def num_cover_pages_in_file(fpath, identifier=None, threshhold=20):
         fpath = Path(fpath)
         reader = PdfReader(fpath)
@@ -581,6 +594,7 @@ def num_cover_pages_in_file(fpath, identifier=None, threshhold=20):
           return (fpath, identifier, '?')
 
         return (fpath, identifier, info['num_USC_SC_cover_pages'])
+
 
 def num_cover_pages(in_path, threshhold=20):
     def _num_cover_pages(fpath):
@@ -616,7 +630,9 @@ def print_version():
     sys.exit(0)
 
 __all__ = [ num_cover_pages_in_file,
-            rm_leading_pages ]
+            rm_leading_pages,
+            check_status_of_file,
+            process_file]
 
 def main():
     parser = argparse.ArgumentParser(description="TCL command-line pdf editing tool.")

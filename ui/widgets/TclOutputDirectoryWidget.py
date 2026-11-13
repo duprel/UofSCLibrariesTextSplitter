@@ -1,21 +1,18 @@
-import os, sys, time
 from pathlib import Path
-from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QWidget, QListWidget,
+from PySide6.QtWidgets import (QDialog, QLabel, QWidget, QListWidget,
     QDialogButtonBox, QGroupBox, QRadioButton, QListWidgetItem, QListView,
     QProgressBar, QLineEdit, QPushButton, QTextEdit, QMenu, QSpinBox,
     QComboBox, QFileDialog, QHBoxLayout, QVBoxLayout, QMainWindow, QStatusBar)
 from PySide6.QtCore import (QCoreApplication, Qt, Signal, QSettings, QStandardPaths,
                             QSize, QPoint)
 from PySide6.QtGui import QAction, QIcon
-from .TclPdfSettingsDialog import PdfSettings, PdfSettingsDialog
-from utils.TclPdfOutputDirectory import (TclPdfOutputDirectory)
 from .TclPdfViewDialog import TclPdfViewDialog
 
 ui_dir = Path(__file__).resolve().parents[1]
 
 document_icon_path  = str(ui_dir/"resources"/"icons"/"document-pdf.png")
 
-class TclPdfOutputDirectoryWidget(QWidget):
+class TclOutputDirectoryWidget(QWidget):
 
   def __init__(self, settings):
     super().__init__()
@@ -35,12 +32,12 @@ class TclPdfOutputDirectoryWidget(QWidget):
     if self.settings.value("out_directory", None):
       output_dir_text = str(self.settings.value("out_directory"))
     else:
-      output_dir_text = "<<Go to settings to set the PDF output directory>>"
+      output_dir_text = "<<Go to settings to set the output directory>>"
 
     self.output_label = QLabel(f"Output Directory: {output_dir_text}")
 
     self.list_view = QListView()
-    self.list_model = TclPdfOutputDirectory(self.settings)
+    self.list_model = self.LIST_MODEL_CLASS(self.settings)
     self.list_view.setModel(self.list_model)
     self.list_view.setContextMenuPolicy(Qt.CustomContextMenu)
     self.list_view.customContextMenuRequested.connect(self.showContextMenu)
@@ -50,7 +47,7 @@ class TclPdfOutputDirectoryWidget(QWidget):
     vbox.addWidget(self.list_view)
     self.setLayout(vbox)
 
-  def reloadPdfs(self):
+  def reload(self):
     output_dir_text = str(self.settings.value("out_directory"))
     self.output_label.setText(f"Output Directory: {output_dir_text}")
     self.list_model.reload()
@@ -76,7 +73,7 @@ class TclPdfOutputDirectoryWidget(QWidget):
 
   def viewSelection(self):
     item = self.list_model.data(self.current_index, Qt.UserRole + 1)
-    self.dialog = TclPdfViewDialog(self, self.settings, str(item.filename))
+    self.dialog = self.VIEW_DIALOG_CLASS(self, self.settings, str(item.filename))
     self.dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
     self.dialog.exec()
     

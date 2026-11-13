@@ -7,17 +7,17 @@ from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QWidget,
 from PySide6.QtCore import QCoreApplication, Qt, Signal, QSettings, QStandardPaths
 from PySide6.QtGui import (QAction, QIcon)
 from .TclSelectDirectoryWidget import TclSelectDirectoryWidget
-from .TclPdfOverwritePolicy import defaultOverwritePolicy,PdfOverwritePolicy,TclPdfOverwritePolicy
-from .TclPdfRetentionPolicy import defaultRetentionPolicy,TclPdfRetentionPolicy
+from .TclDirOverwritePolicy import defaultOverwritePolicy,DirOverwritePolicy,TclDirOverwritePolicy
+from .TclDirRetentionPolicy import defaultRetentionPolicy,TclDirRetentionPolicy
 
-PdfSettings = namedtuple("PdfSettings", ["in_directory",
+TclDirSettings = namedtuple("DirSettings", ["in_directory",
                                          "out_directory",
                                          "overwrite_policy",
                                          "backup_extension",
                                          "retention_policy"])
 
-class PdfSettingsDialog(QDialog):
-  pdfSettingsAccepted = Signal(PdfSettings)
+class TclDirSettingsDialog(QDialog):
+  dirSettingsAccepted = Signal(TclDirSettings)
   def __init__(self, parent, settings=None):
     if settings:
       self.in_directory = settings.value("in_directory", QStandardPaths.writableLocation(QStandardPaths.StandardLocation.HomeLocation))
@@ -25,14 +25,14 @@ class PdfSettingsDialog(QDialog):
       self.overwrite_policy = settings.value("overwrite_policy", defaultOverwritePolicy.policy)
       self.backup_extension = settings.value("backup_extension", defaultOverwritePolicy.backup_extension)
       self.retention_policy = settings.value("retention_policy", defaultRetentionPolicy)
-      self.pdf_settings = None
+      self.settings = None
     else:
       self.in_directory = None
       self.out_directory = None
       self.overwrite_policy = None
       self.backup_extension = None
       self.retention_policy = None
-      self.pdf_settings = None
+      self.settings = None
 
     super().__init__(parent)
     self.settings = settings
@@ -53,11 +53,11 @@ class PdfSettingsDialog(QDialog):
                                                      label_text="Pick a Directory")
     self.out_select_widget = TclSelectDirectoryWidget(start_path=self.out_directory, 
                                                       label_text="Pick a Directory")
-    self.overwrite_policy_widget = TclPdfOverwritePolicy(PdfOverwritePolicy(
+    self.overwrite_policy_widget = TclDirOverwritePolicy(DirOverwritePolicy(
       self.overwrite_policy if self.overwrite_policy else defaultOverwritePolicy.policy,
       self.backup_extension if self.backup_extension else defaultOverwritePolicy.backup_extension
     ))
-    self.retention_policy_widget = TclPdfRetentionPolicy(self.retention_policy 
+    self.retention_policy_widget = TclDirRetentionPolicy(self.retention_policy 
                                                          if self.retention_policy 
                                                          else defaultRetentionPolicy)
     self.button_box = QDialogButtonBox(buttons)
@@ -108,12 +108,12 @@ class PdfSettingsDialog(QDialog):
       self.retention_policy_widget.setEnabled(False)
   
   def accept(self):
-    self.pdf_settings = PdfSettings(self.in_directory,
+    self.settings = DirSettings(self.in_directory,
                                    self.out_directory,
                                    self.overwrite_policy,
                                    self.backup_extension,
                                    self.retention_policy)
-    self.pdfSettingsAccepted.emit(self.pdf_settings)
+    self.settingsAccepted.emit(self.settings)
     self.done(QDialog.DialogCode.Accepted)
     super().accept()
 
@@ -121,7 +121,7 @@ class PdfSettingsDialog(QDialog):
     self.done(QDialog.DialogCode.Rejected)
     super().reject()
 
-  def pdfSettings(self):
-    return self.pdf_settings
+  def settings(self):
+    return self.settings
     
-__all__ = ['PdfSettings', 'PdfSettingsDialog']
+__all__ = ['TclDirSettings', 'TclDirSettingsDialog']

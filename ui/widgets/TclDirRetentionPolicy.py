@@ -9,7 +9,7 @@ from  PySide6.QtCore import (Qt, Signal)
 
 defaultRetentionPolicy = "Delete"
 
-class TclPdfRetentionPolicy(QGroupBox):
+class TclDirRetentionPolicy(QGroupBox):
   retentionPolicyChanged = Signal(str)
 
   def __init__(self, choice=defaultRetentionPolicy):
@@ -55,7 +55,7 @@ class TclPdfRetentionPolicy(QGroupBox):
     self.retentionPolicyChanged.emit(self.choice)
 
 __all__ = ['defaultRetentionPolicy',
-           'TclPdfRetentionPolicy']
+           'TclDirRetentionPolicy']
 
 class MainWindow(QMainWindow):
   def __init__(self):
@@ -63,7 +63,7 @@ class MainWindow(QMainWindow):
     self.items = ["Enabled","Disabled"]
     super().__init__()
     layout = QVBoxLayout()
-    self.retention_group = TclPdfRetentionPolicy(defaultRetentionPolicy)
+    self.retention_group = TclDirRetentionPolicy(defaultRetentionPolicy)
     self.combo_box = QComboBox()
     self.combo_box.addItems(self.items)
     self.combo_box.currentIndexChanged.connect(self.index_changed)

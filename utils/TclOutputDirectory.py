@@ -9,13 +9,9 @@ from PySide6.QtCore import (Qt, QObject, Signal, QAbstractListModel, QModelIndex
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QMenu
 
-from utils.TclPdfBackgroundProcess import (TclPdfNumCoverPages, 
-                                     TclPdfRmLeadingPages, 
-                                     TclPdfSignals)
-
 
 @dataclass
-class TclPdfOutput:
+class TclOutput:
   id: int
   filename: str
     
@@ -28,7 +24,9 @@ class TclPdfOutput:
 #    return menu
 
 
-class TclPdfOutputDirectory(QAbstractListModel):
+class TclOutputDirectory(QAbstractListModel):
+  OUTPUT_CLASS = TclOutput
+  GLOB_PATTERN = None
 
   def __init__(self, settings=None, parent=None):
     self.settings = settings
@@ -42,11 +40,11 @@ class TclPdfOutputDirectory(QAbstractListModel):
       if not directory:
         return
       index = 0
-      for fname in sorted(Path(directory).glob("*.pdf", case_sensitive=False)):
+      for fname in sorted(Path(directory).glob(self.GLOB_PATTERN, case_sensitive=False)):
         fpath = Path(fname)
         if (fpath.is_file() and
             not fpath.name.startswith('.')):
-          input = TclPdfOutput(id=index, filename=fpath)
+          input = self.OUTPUT_CLASS(id=index, filename=fpath)
           self.files.append(input)
           index = index + 1
 
@@ -84,6 +82,6 @@ class TclPdfOutputDirectory(QAbstractListModel):
 
 
 __all__ = [
-  TclPdfOutput,
-  TclPdfOutputDirectory,
+  TclOutput,
+  TclOutputDirectory,
 ]    
