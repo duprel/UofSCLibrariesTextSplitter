@@ -10,7 +10,7 @@ from .TclSelectDirectoryWidget import TclSelectDirectoryWidget
 from .TclDirOverwritePolicy import defaultOverwritePolicy,DirOverwritePolicy,TclDirOverwritePolicy
 from .TclDirRetentionPolicy import defaultRetentionPolicy,TclDirRetentionPolicy
 
-TclDirSettings = namedtuple("DirSettings", ["in_directory",
+TclDirSettings = namedtuple("TclDirSettings", ["in_directory",
                                          "out_directory",
                                          "overwrite_policy",
                                          "backup_extension",
@@ -108,12 +108,12 @@ class TclDirSettingsDialog(QDialog):
       self.retention_policy_widget.setEnabled(False)
   
   def accept(self):
-    self.settings = DirSettings(self.in_directory,
+    self.settings = TclDirSettings(self.in_directory,
                                    self.out_directory,
                                    self.overwrite_policy,
                                    self.backup_extension,
                                    self.retention_policy)
-    self.settingsAccepted.emit(self.settings)
+    self.dirSettingsAccepted.emit(self.settings)
     self.done(QDialog.DialogCode.Accepted)
     super().accept()
 

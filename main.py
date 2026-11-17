@@ -8,7 +8,7 @@ from PySide6.QtCore import (QCoreApplication, Qt, Signal, QSettings, QStandardPa
                             QSize, QPoint)
 from PySide6.QtGui import QAction, QIcon
 from ui.widgets.TclDirSettingsDialog import TclDirSettings, TclDirSettingsDialog
-from TclPdfCustom import TclPdfOutputDirectoryWidget, TclPdfInputDirectoryWidget
+from TclTextCustom import TclTextOutputDirectoryWidget, TclTextInputDirectoryWidget
 
 def get_asset_path(relative_path):
   try:
@@ -52,11 +52,11 @@ class MainWindow(QMainWindow):
     self.initializeUI()
 
   def initializeSettings(self):
-    self.settings = QSettings()
+    self.settings = QSettings("tcl.sc.edu","seeklight_textsplitter")
     size = self.settings.value("window_size", QSize(650,650))
     position = self.settings.value("window_position", QPoint(100,100))
     geometry = self.settings.value("window_geometry", None)
-    self.setWindowTitle("PDF Cover Page Removal")
+    self.setWindowTitle("Seeklight Transcript Splitter")
     self.resize(size)
     self.move(position)
     if geometry:
@@ -81,8 +81,8 @@ class MainWindow(QMainWindow):
     vbox = QVBoxLayout()
     
     self.tab_widget = QTabWidget()
-    self.tab_input_dir = TclPdfInputDirectoryWidget(self.settings)
-    self.tab_output_dir = TclPdfOutputDirectoryWidget(self.settings)
+    self.tab_input_dir = TclTextInputDirectoryWidget(self.settings)
+    self.tab_output_dir = TclTextOutputDirectoryWidget(self.settings)
     self.tab_widget.addTab(self.tab_input_dir, "Input Directory")
     self.tab_widget.addTab(self.tab_output_dir, "Output Directory")
   
@@ -134,9 +134,9 @@ class MainWindow(QMainWindow):
     self.settings.setValue("retention_policy", settings_tuple.retention_policy)
     self.saveSettings()
     if settings_tuple.in_directory != prev_in_directory:
-      self.tab_input_dir.reloadPdfs()
+      self.tab_input_dir.reload()
     if settings_tuple.out_directory != prev_out_directory:
-      self.tab_output_dir.reloadPdfs()
+      self.tab_output_dir.reload()
 
   def saveSettings(self):
     self.settings.sync()
@@ -156,7 +156,7 @@ class MainWindow(QMainWindow):
 if __name__ == '__main__':
   QCoreApplication.setOrganizationName("University of South Carolina Libraries")
   QCoreApplication.setOrganizationDomain("sc.edu/libraries")
-  QCoreApplication.setApplicationName("PDF Cover Page Remover")
+  QCoreApplication.setApplicationName("Seeklight Text File Splitter")
   app = QApplication(sys.argv)
   app.setWindowIcon(QIcon(get_asset_path("ui/resources/images/gamecock_head_and_neck_icon_rgb_rose.svg")))
   #app.setWindowIcon(QIcon(os.path.join(basedir,

@@ -107,6 +107,9 @@ class TclInputDirectory(QAbstractListModel):
     super().__init__()
     self.getFiles()
 
+  def getFilesInclusionCheck(self, filename):
+    return True
+
   def getFiles(self):
     if self.settings:
       directory = self.settings.value("in_directory")
@@ -114,7 +117,10 @@ class TclInputDirectory(QAbstractListModel):
       if not directory:
         return
       index = 0
-      for fname in sorted(Path(directory).glob(self.GLOB_PATTERN, case_sensitive=False)):
+      #for fname in sorted(Path(directory).glob(self.GLOB_PATTERN, case_sensitive=False)):
+      flist = sorted([ fname for fname in Path(directory).glob(self.GLOB_PATTERN, case_sensitive=False) 
+                        if self.getFilesInclusionCheck(fname)])
+      for fname in flist:
         fpath = Path(fname)
         if (fpath.is_file() and
             not fpath.name.startswith('.')):

@@ -129,7 +129,7 @@ class TclInputDirectoryWidget(QWidget):
     self.process_input_files_button.clicked.connect(self.processInputFiles)
     
     self.reload_input_files_button = QPushButton(self.RELOAD_INPUTS_LABEL)
-    self.reload_input_files_button.clicked.connect(self.reloadInputFiles)
+    self.reload_input_files_button.clicked.connect(self.reload)
 
     hbox = QHBoxLayout()
     hbox.addWidget(self.check_input_status_button)
@@ -242,7 +242,7 @@ class TclInputDirectoryWidget(QWidget):
     #else:
     #  print("BLOCKED ==========================")
 
-  def reloadInputFiles(self):
+  def reload(self):
     input_dir_text = str(self.settings.value("in_directory"))
     self.input_label.setText(f"Input Directory: {input_dir_text}")
     self.list_model.reload()
@@ -255,7 +255,6 @@ class TclInputDirectoryWidget(QWidget):
     menu = QMenu(self)
     if index.isValid():
       item = self.list_model.data(index, Qt.UserRole + 1)
-      #menu = item.contextMenu(self)
       menu.addAction(self.view_act)
       menu.addAction(self.set_input_status_act)
       if item.getStatusContent() is not None:
