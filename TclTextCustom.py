@@ -1,4 +1,7 @@
+import os
+import re
 import zipfile
+from pathlib import Path
 from PySide6.QtWidgets import QMenu, QDialog, QVBoxLayout, QTextEdit
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt
@@ -169,7 +172,9 @@ class TclTextInputDirectoryWidget(TclInputDirectoryWidget):
     item = self.list_model.data(self.current_index, Qt.UserRole + 1)
     with zipfile.ZipFile(item.filename) as zip:
       for zitem in zip.infolist():
-        if not zitem.is_dir() and zitem.filename.lower().endswith(".txt"):
+        bname = os.path.basename(zitem.filename)
+        if (not zitem.is_dir()
+            and re.fullmatch(r'SCCHR[0-9]{2}-[0-9]{4}-[0-9]{3}\.txt', bname, re.IGNORECASE)):
           data = zip.read(zitem)
           if data.startswith((b'\xff\xfe', b'\xfe\xff')):
             text = data.decode('utf-16')
@@ -179,7 +184,7 @@ class TclTextInputDirectoryWidget(TclInputDirectoryWidget):
           fpath = self.settings.value('in_directory') + f"/{zitem.filename}"
           with open(fpath, 'w') as f:
             f.write(text)
-
+    Path.rename(item.filename, str(item.filename) + ".unzipped")
     self.reload()
 
 
